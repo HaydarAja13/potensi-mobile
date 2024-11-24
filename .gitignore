@@ -1,0 +1,21 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+pubspec.lock
+
+# Others
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+macos/
+web/
+linux/
+*.log
+*.tmp
+*.swp
+*.DS_Store
