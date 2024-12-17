@@ -1,24 +1,29 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:potensiapp/dsn_main.dart';
 import 'package:potensiapp/mhs_main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: SplashScreen(),
+    home: Splash(),
   ));
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 }
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
+class Splash extends StatefulWidget {
+  const Splash({super.key});
+  
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<Splash> createState() => _SplashState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashState extends State<Splash> {
   @override
   void initState() {
     super.initState();
@@ -29,16 +34,6 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     });
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Splash();
-  }
-}
-
-class Splash extends StatelessWidget {
-  const Splash({super.key});
-
   @override
   Widget build(BuildContext context) {
     double textScale = MediaQuery.of(context).textScaleFactor;
@@ -131,20 +126,61 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  bool isSwitchOn = false;
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool changeTable = false; // State untuk switch
+  // State untuk switch
+  Future<void> login() async {
+    final url = Uri.parse(
+        'http://192.168.56.1/potensi_api/login.php'); // Ganti dengan URL API Anda
 
-  void navigate() {
-    if (isSwitchOn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DsnMain()),
-      );
+    final response = await http.post(
+      url,
+      body: jsonEncode({
+        'email': emailController.text,
+        'password': passwordController.text,
+        'changeTable': changeTable,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (data['success']) {
+      final prefs = await SharedPreferences.getInstance();
+      // Login berhasil, navigasi ke halaman berdasarkan switch
+      if (changeTable) {
+        await prefs.setInt('id_dosen', data['user']['id_dosen']);
+        await prefs.setString('nip', data['user']['nip']);
+        await prefs.setString('nama_dosen', data['user']['nama_dosen']);
+        await prefs.setString('email', data['user']['email']);
+        await prefs.setString('password', data['user']['password']);
+        await prefs.setString('no_hp', data['user']['no_hp']);
+        await prefs.setString('role', data['role']);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DsnMain()),
+        );
+      } else {
+        await prefs.setInt('id_mahasiswa', data['user']['id_mahasiswa']);
+        await prefs.setInt('nim', data['user']['nim']);
+        await prefs.setString('nama', data['user']['nama']);
+        await prefs.setString('email', data['user']['email']);
+        await prefs.setString('password', data['user']['password']);
+        await prefs.setString('no_hp', data['user']['no_hp']);
+        await prefs.setString('role', data['role']);
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MhsMain()),
+        );
+      }
     } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MhsMain()),
+      // Login gagal
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message'])),
       );
     }
+    print(response.body);
   }
 
   @override
@@ -235,8 +271,9 @@ class _LoginState extends State<Login> {
                   Container(
                     margin: const EdgeInsets.symmetric(
                         vertical: 15.0, horizontal: 0.0),
-                    child: const TextField(
-                      decoration: InputDecoration(
+                    child: TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
                           hintText: 'eg: haydar aydin',
                           hintStyle: TextStyle(
                             color: Colors.grey,
@@ -265,9 +302,10 @@ class _LoginState extends State<Login> {
                   Container(
                     margin: const EdgeInsets.symmetric(
                         vertical: 15.0, horizontal: 0.0),
-                    child: const TextField(
+                    child: TextField(
+                      controller: passwordController,
                       obscureText: true,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                           hintText: '•••••••',
                           hintStyle: TextStyle(
                             color: Colors.grey,
@@ -293,11 +331,11 @@ class _LoginState extends State<Login> {
                       Row(
                         children: [
                           Switch(
-                            value: isSwitchOn,
+                            value: changeTable,
                             activeColor: const Color(0xffFB8500),
                             onChanged: (value) {
                               setState(() {
-                                isSwitchOn = value;
+                                changeTable = value;
                               });
                             },
                           ),
@@ -305,7 +343,7 @@ class _LoginState extends State<Login> {
                             width: screenWidth * 0.05,
                           ),
                           Text(
-                            isSwitchOn ? "Dosen" : "Mahasiswa",
+                            changeTable ? "Dosen" : "Mahasiswa",
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 14.0 * textScale,
@@ -328,7 +366,7 @@ class _LoginState extends State<Login> {
                   Container(
                     margin: const EdgeInsets.only(top: 15.0),
                     child: ElevatedButton(
-                      onPressed: navigate,
+                      onPressed: login,
                       style: ElevatedButton.styleFrom(
                           backgroundColor:
                               const Color.fromRGBO(33, 158, 188, 1),

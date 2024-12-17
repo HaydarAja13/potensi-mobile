@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MaterialApp(
@@ -15,6 +20,105 @@ class QRDosen extends StatefulWidget {
 }
 
 class _QRDosenState extends State<QRDosen> {
+  String kodeQR = "Loading...";
+  int? idDosen;
+  Map<String, dynamic>? jadwalData;
+  bool isLoading = true;
+  String? idJadwal;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+    loadDataAndFetchJadwal();
+  }
+
+  Future<void> loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      idDosen = prefs.getInt('id_dosen');
+    });
+  }
+
+  Future<void> loadDataAndFetchJadwal() async {
+    final prefs = await SharedPreferences.getInstance();
+    idDosen = prefs.getInt('id_dosen');
+    if (idDosen != null) {
+      await fetchJadwal(idDosen!);
+      if (idJadwal != null) {
+        await fetchKodeQR();
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> fetchJadwal(int idUser) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal.php'),
+        body: {'id_user': idUser.toString()},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Response API: $data');
+        if (data['status'] == 'success') {
+          setState(() {
+            jadwalData = data['data'];
+            isLoading = false;
+            idJadwal = data['data']['kelas_berlangsung'][0]['id'];
+          });
+        } else {
+          print('Error: ${data['message']}');
+        }
+      } else {
+        print('Failed to fetch data. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error during API call: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> fetchKodeQR() async {
+    final url = Uri.parse(
+        'http://192.168.56.1/potensi_api/kode_qr.php'); // Ganti dengan URL API Anda
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id_jadwal': idJadwal}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          setState(() {
+            kodeQR = data['kode_qr'];
+          });
+        } else {
+          setState(() {
+            kodeQR = "Error: ${data['message']}";
+          });
+        }
+      } else {
+        setState(() {
+          kodeQR = "Error: Server returned status ${response.statusCode}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        kodeQR = "Error: $e";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -61,7 +165,9 @@ class _QRDosenState extends State<QRDosen> {
                             height: screenHeight * 0.01,
                           ),
                           Text(
-                            'Pemrograman Perangkat Bergerak',
+                            jadwalData?['kelas_berlangsung']?[0]
+                                    ?['nama_mata_kuliah'] ??
+                                '',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 28.0 * textScale,
@@ -85,7 +191,9 @@ class _QRDosenState extends State<QRDosen> {
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 6.0, horizontal: 28),
                                   child: Text(
-                                    'TI-2A',
+                                    jadwalData?['kelas_berlangsung']?[0]
+                                            ?['kelas'] ??
+                                        '',
                                     style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 14.0 * textScale,
@@ -107,7 +215,8 @@ class _QRDosenState extends State<QRDosen> {
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 6.0, horizontal: 28),
                                   child: Text(
-                                    '07.30 - 11.30',
+                                    '${jadwalData?['kelas_berlangsung']?[0]?['jam_awal'] ?? ''} - '
+                                    '${jadwalData?['kelas_berlangsung']?[0]?['jam_akhir'] ?? ''}',
                                     style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 14.0 * textScale,
@@ -192,7 +301,9 @@ class _QRDosenState extends State<QRDosen> {
                                         ),
                                       ),
                                       Text(
-                                        'MST III/3',
+                                        jadwalData?['kelas_berlangsung']?[0]
+                                                ?['ruang'] ??
+                                            '',
                                         style: TextStyle(
                                           fontFamily: 'Poppins',
                                           fontSize: 14.0 * textScale,
@@ -273,6 +384,7 @@ class _QRDosenState extends State<QRDosen> {
                         children: [
                           Container(
                             width: screenWidth * 0.9,
+                            height: screenHeight * 0.3,
                             margin: const EdgeInsets.only(top: 30, bottom: 20),
                             padding: const EdgeInsets.only(top: 15),
                             decoration: BoxDecoration(
@@ -289,10 +401,15 @@ class _QRDosenState extends State<QRDosen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
+                                SizedBox(
+                                  height: screenHeight * 0.010,
+                                ),
                                 Center(
-                                  child: Image.asset(
-                                    'images/qrimage.png',
-                                    height: screenHeight * 0.25,
+                                  child: QrImageView(
+                                    data:
+                                        "http://192.168.56.1/api/approval_process.php?kode_qr=$kodeQR&id_jadwal=$idJadwal&status=1",
+                                    version: QrVersions.auto,
+                                    size: 230.0,
                                   ),
                                 ),
                               ],

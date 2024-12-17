@@ -1,8 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:potensiapp/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MhsProfile extends StatelessWidget {
+class MhsProfile extends StatefulWidget {
   const MhsProfile({super.key});
+
+  @override
+  State<MhsProfile> createState() => _MhsProfileState();
+}
+
+class _MhsProfileState extends State<MhsProfile> {
+  int? idMahasiswa;
+  int? nim;
+  String? nama;
+  String? email;
+  String? password;
+  String? noHp;
+  String? role;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      idMahasiswa = prefs.getInt('id_mahasiswa');
+      nim = prefs.getInt('nim');
+      nama = prefs.getString('nama');
+      email = prefs.getString('email');
+      password = prefs.getString('password');
+      noHp = prefs.getString('no_hp');
+      role = prefs.getString('role');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +95,7 @@ class MhsProfile extends StatelessWidget {
                                 SizedBox(
                                   width: screenWidth * 0.6,
                                   child: Text(
-                                    'Muhamad Haydar Aydin Alhamdani',
+                                    '$nama',
                                     style: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontSize: 20.0 * textScale,
@@ -80,7 +113,7 @@ class MhsProfile extends StatelessWidget {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12.0, vertical: 4),
                                     child: Text(
-                                      'Mahasiswa',
+                                      '$role'.toUpperCase(),
                                       style: TextStyle(
                                           fontFamily: 'Poppins',
                                           fontSize: 14.0 * textScale,
@@ -149,7 +182,7 @@ class MhsProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: '43323019',
+                      hintText: '$nim',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -195,7 +228,7 @@ class MhsProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: '0812312123',
+                      hintText: '$noHp',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -241,7 +274,7 @@ class MhsProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'hadyard@gmail.com',
+                      hintText: '$email',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -297,11 +330,14 @@ class MhsProfile extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
+                              SharedPreferences prefs =
+                                  await SharedPreferences.getInstance();
+                              prefs.clear();
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const SplashScreen()),
+                                    builder: (context) => const Splash()),
                               );
                             },
                             style: ElevatedButton.styleFrom(

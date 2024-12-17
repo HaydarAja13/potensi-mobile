@@ -1,9 +1,97 @@
-import 'package:flutter/material.dart';
-import 'package:potensiapp/mhs_rekap.dart';
+import 'dart:convert';
 
-class MhsHome extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:potensiapp/mhs_rekap.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class MhsHome extends StatefulWidget {
   const MhsHome({super.key, required this.setPage});
   final Function(int) setPage;
+
+  @override
+  State<MhsHome> createState() => _MhsHomeState();
+}
+
+class _MhsHomeState extends State<MhsHome> {
+  int? idMahasiswa;
+  int? nim;
+  String? nama;
+  String? email;
+  String? password;
+  String? noHp;
+  String? role;
+  Map<String, dynamic>? jadwalData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+    loadDataAndFetchJadwal();
+  }
+
+  Future<void> loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      idMahasiswa = prefs.getInt('id_mahasiswa');
+      nama = prefs.getString('nama');
+      email = prefs.getString('email');
+      password = prefs.getString('password');
+      noHp = prefs.getString('noHp');
+      role = prefs.getString('role');
+    });
+  }
+
+  Future<void> loadDataAndFetchJadwal() async {
+    final prefs = await SharedPreferences.getInstance();
+    idMahasiswa = prefs.getInt('id_mahasiswa');
+    if (idMahasiswa != null) {
+      await fetchJadwal(idMahasiswa!);
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> fetchJadwal(int idMahasiswa) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal_mahasiswa.php'),
+        body: {'id_mahasiswa': idMahasiswa.toString()},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Response API: $data');
+        if (data['status'] == 'success') {
+          setState(() {
+            jadwalData = data['data'];
+            isLoading = false;
+          });
+        } else {
+          print('Error: ${data['message']}');
+        }
+      } else {
+        print('Failed to fetch data. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error during API call: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  String duaKalimat(String input) {
+    List<String> words = input.split(' ');
+    if (words.length > 2) {
+      return words.sublist(0, 2).join(' ');
+    }
+    return input;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +138,7 @@ class MhsHome extends StatelessWidget {
                                       fontWeight: FontWeight.w500),
                                 ),
                                 Text(
-                                  'Muhamad Haydar',
+                                  duaKalimat('$nama'),
                                   style: TextStyle(
                                       fontFamily: 'Poppins',
                                       fontSize: 22.0 * textScale,
@@ -63,7 +151,7 @@ class MhsHome extends StatelessWidget {
                               children: [
                                 ElevatedButton(
                                   onPressed: () {
-                                    setPage(3);
+                                    widget.setPage(3);
                                   },
                                   style: ElevatedButton.styleFrom(
                                       shape: const CircleBorder()),
@@ -79,189 +167,234 @@ class MhsHome extends StatelessWidget {
                         ),
                         SizedBox(
                           width: double.infinity,
-                          child: Card(
-                            margin: const EdgeInsets.fromLTRB(0, 15, 0, 15),
-                            color: Colors.white,
-                            elevation: 10,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.0),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(15),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      const CircleAvatar(
-                                        backgroundColor: Color(0xffFB8500),
-                                        radius: 35,
-                                      ),
-                                      Expanded(
-                                        child: Container(
-                                          margin:
-                                              const EdgeInsets.only(left: 10),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.start,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      const BorderRadius.all(
-                                                          Radius.circular(50)),
-                                                  color: const Color(0xffFFB703)
-                                                      .withOpacity(0.4),
-                                                ),
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      vertical: 2.0,
-                                                      horizontal: 8.0),
-                                                  child: Text(
-                                                    'On Going',
-                                                    style: TextStyle(
-                                                      color: const Color(
-                                                          0xffFB8500),
-                                                      fontFamily: 'Poppins',
-                                                      fontSize: 11 * textScale,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 5),
-                                                child: SizedBox(
-                                                  width: screenWidth * 20,
-                                                  child: Text(
-                                                    'Pemrog. Perangkat Bergerak',
-                                                    style: TextStyle(
-                                                      fontFamily: 'Poppins',
-                                                      fontSize:
-                                                          13.0 * textScale,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 5),
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xfff0f0f0),
-                                                        borderRadius:
-                                                            const BorderRadius
-                                                                .only(
-                                                          topLeft:
-                                                              Radius.circular(
-                                                                  7),
-                                                          bottomLeft:
-                                                              Radius.circular(
-                                                                  7),
-                                                        ),
-                                                        border: Border.all(
-                                                            color: Colors.grey),
-                                                      ),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 3.0,
-                                                                horizontal:
-                                                                    8.0),
-                                                        child: Text(
-                                                          'TI-2A',
-                                                          style: TextStyle(
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                              fontSize: 10 *
-                                                                  textScale),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 5),
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xfff0f0f0),
-                                                        borderRadius:
-                                                            const BorderRadius
-                                                                .only(
-                                                          topRight:
-                                                              Radius.circular(
-                                                                  7),
-                                                          bottomRight:
-                                                              Radius.circular(
-                                                                  7),
-                                                        ),
-                                                        border: Border.all(
-                                                            color: Colors.grey),
-                                                      ),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 3.0,
-                                                                horizontal:
-                                                                    8.0),
-                                                        child: Text(
-                                                          'MST III/03',
-                                                          style: TextStyle(
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                              fontSize: 10 *
-                                                                  textScale),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons.access_time,
-                                            size: 35,
-                                          ),
-                                          Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 5),
-                                            child: Text(
-                                              '08.30 - 11.50',
-                                              style: TextStyle(
-                                                  fontSize: 12 * textScale,
-                                                  fontWeight: FontWeight.w500),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ],
+                          child: jadwalData != null &&
+                                  jadwalData!['kelas_berlangsung'] != null &&
+                                  jadwalData!['kelas_berlangsung'].isNotEmpty
+                              ? Card(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 15, 0, 15),
+                                  color: Colors.white,
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(15),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const CircleAvatar(
+                                              backgroundColor:
+                                                  Color(0xffFB8500),
+                                              radius: 35,
+                                            ),
+                                            Expanded(
+                                              child: Container(
+                                                margin: const EdgeInsets.only(
+                                                    left: 10),
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Container(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            const BorderRadius
+                                                                .all(
+                                                                Radius.circular(
+                                                                    50)),
+                                                        color: const Color(
+                                                                0xffFFB703)
+                                                            .withOpacity(0.4),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 2.0,
+                                                                horizontal:
+                                                                    8.0),
+                                                        child: Text(
+                                                          'On Going',
+                                                          style: TextStyle(
+                                                            color: const Color(
+                                                                0xffFB8500),
+                                                            fontFamily:
+                                                                'Poppins',
+                                                            fontSize:
+                                                                11 * textScale,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 5),
+                                                      child: SizedBox(
+                                                        width: screenWidth * 20,
+                                                        child: Text(
+                                                          '${jadwalData!['kelas_berlangsung'][0]['nama_mata_kuliah']}',
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                'Poppins',
+                                                            fontSize: 13.0 *
+                                                                textScale,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(top: 5),
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                  0xfff0f0f0),
+                                                              borderRadius:
+                                                                  const BorderRadius
+                                                                      .only(
+                                                                topLeft: Radius
+                                                                    .circular(
+                                                                        7),
+                                                                bottomLeft: Radius
+                                                                    .circular(
+                                                                        7),
+                                                              ),
+                                                              border: Border.all(
+                                                                  color: Colors
+                                                                      .grey),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          3.0,
+                                                                      horizontal:
+                                                                          8.0),
+                                                              child: Text(
+                                                                '${jadwalData!['kelas_berlangsung'][0]['kelas']}',
+                                                                style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Poppins',
+                                                                    fontSize: 10 *
+                                                                        textScale),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(top: 5),
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                  0xfff0f0f0),
+                                                              borderRadius:
+                                                                  const BorderRadius
+                                                                      .only(
+                                                                topRight: Radius
+                                                                    .circular(
+                                                                        7),
+                                                                bottomRight:
+                                                                    Radius
+                                                                        .circular(
+                                                                            7),
+                                                              ),
+                                                              border: Border.all(
+                                                                  color: Colors
+                                                                      .grey),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          3.0,
+                                                                      horizontal:
+                                                                          8.0),
+                                                              child: Text(
+                                                                '${jadwalData!['kelas_berlangsung'][0]['ruang']}',
+                                                                style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Poppins',
+                                                                    fontSize: 10 *
+                                                                        textScale),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  Icons.access_time,
+                                                  size: 35,
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 5),
+                                                  child: Text(
+                                                    '${jadwalData!['kelas_berlangsung'][0]['jam_awal']} - ${jadwalData!['kelas_berlangsung'][0]['jam_akhir']}',
+                                                    style: TextStyle(
+                                                        fontSize:
+                                                            12 * textScale,
+                                                        fontWeight:
+                                                            FontWeight.w500),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                )
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : Card(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                                  color: Colors.white,
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Text(
+                                      'Tidak ada Kelas',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                         ),
                         Text(
                           'Next Class',
@@ -273,192 +406,239 @@ class MhsHome extends StatelessWidget {
                         ),
                         SizedBox(
                           width: double.infinity,
-                          child: Card(
-                            margin: const EdgeInsets.fromLTRB(0, 15, 0, 0),
-                            color: Colors.white,
-                            elevation: 10,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20.0),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(15),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      const CircleAvatar(
-                                        backgroundColor: Color(0xff999999),
-                                        radius: 35,
-                                      ),
-                                      Expanded(
-                                        child: Container(
-                                          margin:
-                                              const EdgeInsets.only(left: 10),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.start,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      const BorderRadius.all(
-                                                          Radius.circular(50)),
-                                                  color: const Color(0xffc2c2c2)
-                                                      .withOpacity(0.4),
-                                                ),
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      vertical: 2.0,
-                                                      horizontal: 8.0),
-                                                  child: Text(
-                                                    'Selanjutnya',
-                                                    style: TextStyle(
-                                                      color: const Color(
-                                                          0xff858585),
-                                                      fontFamily: 'Poppins',
-                                                      fontSize: 11 * textScale,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 5),
-                                                child: SizedBox(
-                                                  width: screenWidth * 20,
-                                                  child: Text(
-                                                    'Pemrog. Visual',
-                                                    style: TextStyle(
-                                                        fontFamily: 'Poppins',
-                                                        fontSize:
-                                                            13.0 * textScale,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.black54),
-                                                  ),
-                                                ),
-                                              ),
-                                              Row(
-                                                children: [
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 5),
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xfff0f0f0),
-                                                        borderRadius:
-                                                            const BorderRadius
-                                                                .only(
-                                                          topLeft:
-                                                              Radius.circular(
-                                                                  7),
-                                                          bottomLeft:
-                                                              Radius.circular(
-                                                                  7),
-                                                        ),
-                                                        border: Border.all(
-                                                            color: Colors.grey),
-                                                      ),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 3.0,
-                                                                horizontal:
-                                                                    8.0),
-                                                        child: Text(
-                                                          'TI-2A',
-                                                          style: TextStyle(
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                              fontSize: 10 *
-                                                                  textScale),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 5),
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xfff0f0f0),
-                                                        borderRadius:
-                                                            const BorderRadius
-                                                                .only(
-                                                          topRight:
-                                                              Radius.circular(
-                                                                  7),
-                                                          bottomRight:
-                                                              Radius.circular(
-                                                                  7),
-                                                        ),
-                                                        border: Border.all(
-                                                            color: Colors.grey),
-                                                      ),
-                                                      child: Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 3.0,
-                                                                horizontal:
-                                                                    8.0),
-                                                        child: Text(
-                                                          'MST III/03',
-                                                          style: TextStyle(
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                              fontSize: 10 *
-                                                                  textScale),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          const Icon(
-                                            Icons.access_time,
-                                            size: 35,
-                                            color: Color(0xff737373),
-                                          ),
-                                          Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 5),
-                                            child: Text(
-                                              '08.30 - 11.50',
-                                              style: TextStyle(
-                                                  fontSize: 12 * textScale,
-                                                  fontWeight: FontWeight.w500,
-                                                  color:
-                                                      const Color(0xff737373)),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ],
+                          child: jadwalData != null &&
+                                  jadwalData!['kelas_akan_datang'] != null &&
+                                  jadwalData!['kelas_akan_datang'].isNotEmpty
+                              ? Card(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                                  color: Colors.white,
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(15),
+                                    child: Column(
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const CircleAvatar(
+                                              backgroundColor:
+                                                  Color(0xff999999),
+                                              radius: 35,
+                                            ),
+                                            Expanded(
+                                              child: Container(
+                                                margin: const EdgeInsets.only(
+                                                    left: 10),
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Container(
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            const BorderRadius
+                                                                .all(
+                                                                Radius.circular(
+                                                                    50)),
+                                                        color: const Color(
+                                                                0xffc2c2c2)
+                                                            .withOpacity(0.4),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 2.0,
+                                                                horizontal:
+                                                                    8.0),
+                                                        child: Text(
+                                                          'Selanjutnya',
+                                                          style: TextStyle(
+                                                            color: const Color(
+                                                                0xff858585),
+                                                            fontFamily:
+                                                                'Poppins',
+                                                            fontSize:
+                                                                11 * textScale,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 5),
+                                                      child: SizedBox(
+                                                        width: screenWidth * 20,
+                                                        child: Text(
+                                                          'Pemrog. Visual',
+                                                          style: TextStyle(
+                                                              fontFamily:
+                                                                  'Poppins',
+                                                              fontSize: 13.0 *
+                                                                  textScale,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: Colors
+                                                                  .black54),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(top: 5),
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                  0xfff0f0f0),
+                                                              borderRadius:
+                                                                  const BorderRadius
+                                                                      .only(
+                                                                topLeft: Radius
+                                                                    .circular(
+                                                                        7),
+                                                                bottomLeft: Radius
+                                                                    .circular(
+                                                                        7),
+                                                              ),
+                                                              border: Border.all(
+                                                                  color: Colors
+                                                                      .grey),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          3.0,
+                                                                      horizontal:
+                                                                          8.0),
+                                                              child: Text(
+                                                                'TI-2A',
+                                                                style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Poppins',
+                                                                    fontSize: 10 *
+                                                                        textScale),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(top: 5),
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                  0xfff0f0f0),
+                                                              borderRadius:
+                                                                  const BorderRadius
+                                                                      .only(
+                                                                topRight: Radius
+                                                                    .circular(
+                                                                        7),
+                                                                bottomRight:
+                                                                    Radius
+                                                                        .circular(
+                                                                            7),
+                                                              ),
+                                                              border: Border.all(
+                                                                  color: Colors
+                                                                      .grey),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          3.0,
+                                                                      horizontal:
+                                                                          8.0),
+                                                              child: Text(
+                                                                'MST III/03',
+                                                                style: TextStyle(
+                                                                    fontFamily:
+                                                                        'Poppins',
+                                                                    fontSize: 10 *
+                                                                        textScale),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  Icons.access_time,
+                                                  size: 35,
+                                                  color: Color(0xff737373),
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 5),
+                                                  child: Text(
+                                                    '08.30 - 11.50',
+                                                    style: TextStyle(
+                                                        fontSize:
+                                                            12 * textScale,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: const Color(
+                                                            0xff737373)),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                )
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : Card(
+                                  margin:
+                                      const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                                  color: Colors.white,
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20.0),
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Text(
+                                      'Tidak ada Kelas',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -536,7 +716,7 @@ class MhsHome extends StatelessWidget {
                                       backgroundColor:
                                           Color.fromARGB(150, 142, 202, 230),
                                       child: Icon(
-                                        Icons.thermostat_rounded,
+                                        Icons.check_circle_outline_sharp,
                                         size: 35,
                                         color: Color(0xff219EBC),
                                       ),
@@ -548,49 +728,10 @@ class MhsHome extends StatelessWidget {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Sakit',
+                                            'Masuk',
                                             style: TextStyle(
                                                 fontFamily: 'Poppins',
-                                                fontSize: 12 * textScale,
-                                                color: const Color(0xff929292),
-                                                fontWeight: FontWeight.w600),
-                                          ),
-                                          Text(
-                                            '01',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 20 * textScale,
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w700),
-                                          )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor:
-                                          Color.fromARGB(150, 142, 202, 230),
-                                      child: Icon(
-                                        Icons.mail_rounded,
-                                        size: 35,
-                                        color: Color(0xff219EBC),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Izin',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 12 * textScale,
+                                                fontSize: 14 * textScale,
                                                 color: const Color(0xff929292),
                                                 fontWeight: FontWeight.w600),
                                           ),
@@ -626,7 +767,7 @@ class MhsHome extends StatelessWidget {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Alpha',
+                                            'Tidak masuk',
                                             style: TextStyle(
                                                 fontFamily: 'Poppins',
                                                 fontSize: 14 * textScale,
@@ -678,12 +819,12 @@ class MhsHome extends StatelessWidget {
                                 }),
                                 buildElevatedButton(Icons.work_outline, "Kelas",
                                     () {
-                                  setPage(1);
+                                  widget.setPage(1);
                                 }),
                                 buildElevatedButton(
                                     Icons.calendar_today_outlined, "Jadwal",
                                     () {
-                                  setPage(2);
+                                  widget.setPage(2);
                                 }),
                                 buildElevatedButton(
                                     Icons.more_horiz, "Lainnya", () {}),

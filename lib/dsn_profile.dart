@@ -1,8 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:potensiapp/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class DsnProfile extends StatelessWidget {
+class DsnProfile extends StatefulWidget {
   const DsnProfile({super.key});
+
+  @override
+  State<DsnProfile> createState() => _DsnProfileState();
+}
+
+class _DsnProfileState extends State<DsnProfile> {
+  int? idDosen;
+  String? nip;
+  String? nama;
+  String? email;
+  String? password;
+  String? noHp;
+  String? role;
+
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      idDosen = prefs.getInt('id_dosen');
+      nip = prefs.getString('nip');
+      nama = prefs.getString('nama_dosen');
+      email = prefs.getString('email');
+      password = prefs.getString('password');
+      noHp = prefs.getString('no_hp');
+      role = prefs.getString('role');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +95,7 @@ class DsnProfile extends StatelessWidget {
                                 SizedBox(
                                   width: screenWidth * 0.6,
                                   child: Text(
-                                    'Suko Tyas',
+                                    '$nama',
                                     style: TextStyle(
                                         fontFamily: 'Poppins',
                                         fontSize: 20.0 * textScale,
@@ -80,7 +113,7 @@ class DsnProfile extends StatelessWidget {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12.0, vertical: 4),
                                     child: Text(
-                                      'Dosen',
+                                      '$role'.toUpperCase(),
                                       style: TextStyle(
                                           fontFamily: 'Poppins',
                                           fontSize: 14.0 * textScale,
@@ -149,7 +182,7 @@ class DsnProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: '01123123',
+                      hintText: '$nip',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -195,7 +228,7 @@ class DsnProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: '0812312123',
+                      hintText: '$noHp',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -241,7 +274,7 @@ class DsnProfile extends StatelessWidget {
                     readOnly: true,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'paksuko@gmail.com',
+                      hintText: '$email',
                       hintStyle: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14.0 * textScale,
@@ -301,7 +334,7 @@ class DsnProfile extends StatelessWidget {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const SplashScreen()),
+                                    builder: (context) => const Splash()),
                               );
                             },
                             style: ElevatedButton.styleFrom(

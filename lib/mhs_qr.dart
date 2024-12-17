@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 void main() {
@@ -19,6 +22,52 @@ class _QRMahasiswaState extends State<QRMahasiswa> {
   final GlobalKey qrKey = GlobalKey(debugLabel: "QR");
   Barcode? result;
   QRViewController? controller;
+  bool? isFlashOn;
+
+  Future<void> saveToDetailPresensi({
+    required String idJadwal,
+    required String kode_qr,
+    required String status,
+  }) async {
+    const String url =
+        'https://localhost/potensi_api/update_detail_presensi.php';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        body: {
+          'id_presensi': idJadwal,
+          'id_jam_a': kode_qr,
+          'status': status,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Data berhasil dikirim ke server!")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text("Gagal menyimpan data: ${responseData['message']}")),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  "Error: Server mengembalikan status ${response.statusCode}")),
+        );
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $error")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -211,17 +260,72 @@ class _QRMahasiswaState extends State<QRMahasiswa> {
                           right: 0,
                           child: Align(
                             alignment: Alignment.center,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                  shape: const CircleBorder(),
-                                  padding: const EdgeInsets.all(16),
-                                  backgroundColor: const Color(0xffFFB703)),
-                              child: const Icon(
-                                Icons.flashlight_on_rounded,
-                                size: 48,
-                                color: Colors.white,
-                              ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    if (result?.code != null) {
+                                      final scannedData =
+                                          result!.code!.split(';');
+                                      if (scannedData.length == 5) {
+                                        await saveToDetailPresensi(
+                                          idJadwal: scannedData[0],
+                                          kode_qr: scannedData[1],
+                                          status: scannedData[2],
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  "Format QR code tidak valid")),
+                                        );
+                                      }
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                "Tidak ada QR code yang dipindai")),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    shape: const CircleBorder(),
+                                    padding: const EdgeInsets.all(16),
+                                    backgroundColor: const Color(0xff219EBC),
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_circle,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    if (controller != null) {
+                                      await controller!.toggleFlash();
+                                      setState(() {
+                                        isFlashOn = !(isFlashOn ?? false);
+                                      });
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    shape: const CircleBorder(),
+                                    padding: const EdgeInsets.all(16),
+                                    backgroundColor: const Color(0xffFFB703),
+                                  ),
+                                  child: Icon(
+                                    isFlashOn == true
+                                        ? Icons.flash_on
+                                        : Icons.flash_off,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -244,5 +348,17 @@ class _QRMahasiswaState extends State<QRMahasiswa> {
         result = scanData;
       });
     });
+
+    controller.getFlashStatus().then((status) {
+      setState(() {
+        isFlashOn = status;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
   }
 }
