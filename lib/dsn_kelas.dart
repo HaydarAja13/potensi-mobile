@@ -15,6 +15,7 @@ class _DsnKelasState extends State<DsnKelas> {
   int? idDosen;
   Map<String, dynamic>? jadwalData;
   bool isLoading = true;
+  String? urlApi;
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _DsnKelasState extends State<DsnKelas> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       idDosen = prefs.getInt('id_dosen');
+      urlApi = prefs.getString('urlApi');
     });
   }
 
@@ -45,7 +47,7 @@ class _DsnKelasState extends State<DsnKelas> {
   Future<void> fetchJadwal(int idUser) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal.php'),
+        Uri.parse('$urlApi/potensi_api/fetch_jadwal.php'),
         body: {'id_user': idUser.toString()},
       );
 
@@ -315,7 +317,27 @@ class _DsnKelasState extends State<DsnKelas> {
                             )
                           ],
                         )
-                      : const Text('tidak ada'),
+                      : SizedBox(
+                          width: double.infinity,
+                          child: Card(
+                            margin: const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Tidak ada Kelas',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                   SizedBox(
                     height: screenHeight * 0.02,
                   ),

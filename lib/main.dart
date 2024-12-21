@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:potensiapp/dsn_main.dart';
 import 'package:potensiapp/mhs_main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   runApp(const MaterialApp(
     debugShowCheckedModeBanner: false,
@@ -18,7 +20,7 @@ void main() {
 
 class Splash extends StatefulWidget {
   const Splash({super.key});
-  
+
   @override
   State<Splash> createState() => _SplashState();
 }
@@ -34,6 +36,7 @@ class _SplashState extends State<Splash> {
       );
     });
   }
+
   @override
   Widget build(BuildContext context) {
     double textScale = MediaQuery.of(context).textScaleFactor;
@@ -128,11 +131,13 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  String urlApi = 'http://192.168.56.1';
   bool changeTable = false; // State untuk switch
   // State untuk switch
   Future<void> login() async {
+    final prefs = await SharedPreferences.getInstance();
     final url = Uri.parse(
-        'http://192.168.56.1/potensi_api/login.php'); // Ganti dengan URL API Anda
+        '$urlApi/potensi_api/login.php'); // Ganti dengan URL API Anda
 
     final response = await http.post(
       url,
@@ -147,7 +152,6 @@ class _LoginState extends State<Login> {
     final data = jsonDecode(response.body);
 
     if (data['success']) {
-      final prefs = await SharedPreferences.getInstance();
       // Login berhasil, navigasi ke halaman berdasarkan switch
       if (changeTable) {
         await prefs.setInt('id_dosen', data['user']['id_dosen']);
@@ -157,6 +161,7 @@ class _LoginState extends State<Login> {
         await prefs.setString('password', data['user']['password']);
         await prefs.setString('no_hp', data['user']['no_hp']);
         await prefs.setString('role', data['role']);
+        await prefs.setString('urlApi', urlApi);
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const DsnMain()),
@@ -169,6 +174,7 @@ class _LoginState extends State<Login> {
         await prefs.setString('password', data['user']['password']);
         await prefs.setString('no_hp', data['user']['no_hp']);
         await prefs.setString('role', data['role']);
+        await prefs.setString('urlApi', urlApi);
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const MhsMain()),

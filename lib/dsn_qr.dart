@@ -2,15 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:potensiapp/dsn_main.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: QRDosen(),
-  ));
-}
 
 class QRDosen extends StatefulWidget {
   const QRDosen({super.key});
@@ -25,7 +19,7 @@ class _QRDosenState extends State<QRDosen> {
   Map<String, dynamic>? jadwalData;
   bool isLoading = true;
   String? idJadwal;
-
+  String? urlApi;
   @override
   void initState() {
     super.initState();
@@ -37,6 +31,7 @@ class _QRDosenState extends State<QRDosen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       idDosen = prefs.getInt('id_dosen');
+      urlApi = prefs.getString('urlApi');
     });
   }
 
@@ -58,7 +53,7 @@ class _QRDosenState extends State<QRDosen> {
   Future<void> fetchJadwal(int idUser) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal.php'),
+        Uri.parse('$urlApi/potensi_api/fetch_jadwal.php'),
         body: {'id_user': idUser.toString()},
       );
 
@@ -88,7 +83,7 @@ class _QRDosenState extends State<QRDosen> {
 
   Future<void> fetchKodeQR() async {
     final url = Uri.parse(
-        'http://192.168.56.1/potensi_api/kode_qr.php'); // Ganti dengan URL API Anda
+        '$urlApi/potensi_api/kode_qr.php'); // Ganti dengan URL API Anda
     try {
       final response = await http.post(
         url,
@@ -149,7 +144,11 @@ class _QRDosenState extends State<QRDosen> {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const HomeScreen()),
+                              );
                             },
                             style: ElevatedButton.styleFrom(
                                 shape: const CircleBorder(),
@@ -407,7 +406,7 @@ class _QRDosenState extends State<QRDosen> {
                                 Center(
                                   child: QrImageView(
                                     data:
-                                        "http://192.168.56.1/api/approval_process.php?kode_qr=$kodeQR&id_jadwal=$idJadwal&status=1",
+                                        "$urlApi/potensi_api/approval_process.php?kode_qr=$kodeQR&id_jadwal=$idJadwal&status=1",
                                     version: QrVersions.auto,
                                     size: 230.0,
                                   ),

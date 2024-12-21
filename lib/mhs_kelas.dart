@@ -15,6 +15,7 @@ class _MhsKelasState extends State<MhsKelas> {
   int? idMahasiswa;
   Map<String, dynamic>? jadwalData;
   bool isLoading = true;
+  String? urlApi;
 
   @override
   void initState() {
@@ -27,6 +28,7 @@ class _MhsKelasState extends State<MhsKelas> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       idMahasiswa = prefs.getInt('id_mahasiswa');
+      urlApi = prefs.getString('urlApi');
     });
   }
 
@@ -45,7 +47,7 @@ class _MhsKelasState extends State<MhsKelas> {
   Future<void> fetchJadwal(int idUser) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal_mahasiswa.php'),
+        Uri.parse('$urlApi/potensi_api/fetch_jadwal_mahasiswa.php'),
         body: {'id_mahasiswa': idUser.toString()},
       );
 

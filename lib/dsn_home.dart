@@ -25,6 +25,7 @@ class _DsnHomeState extends State<DsnHome> {
   String? idJadwal;
   bool isLoading = true;
   String? kodeQR;
+  String? urlApi;
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _DsnHomeState extends State<DsnHome> {
       password = prefs.getString('password');
       noHp = prefs.getString('no_hp');
       role = prefs.getString('role');
+      urlApi = prefs.getString('urlApi');
     });
   }
 
@@ -61,7 +63,8 @@ class _DsnHomeState extends State<DsnHome> {
   Future<void> fetchJadwal(int idUser) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal.php'),
+        Uri.parse(
+            '$urlApi/potensi_api/fetch_jadwal.php'),
         body: {'id_user': idUser.toString()},
       );
 
@@ -91,7 +94,7 @@ class _DsnHomeState extends State<DsnHome> {
 
   Future<void> startClass(String idJadwal) async {
     final url = Uri.parse(
-        'http://192.168.56.1/potensi_api/start_class.php'); // Ganti dengan URL API kamu
+        '$urlApi/potensi_api/start_class.php'); // Ganti dengan URL API kamu
     try {
       final response = await http.post(
         url,
@@ -213,14 +216,7 @@ class _DsnHomeState extends State<DsnHome> {
                                             jadwalData!['kelas_berlangsung']
                                                 .isNotEmpty
                                         ? GestureDetector(
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        const QRDosen()),
-                                              );
-                                            },
+                                            onTap: () {},
                                             child: Card(
                                               margin: const EdgeInsets.fromLTRB(
                                                   0, 15, 0, 15),
@@ -926,18 +922,38 @@ class _DsnHomeState extends State<DsnHome> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                buildElevatedButton(
-                                  Icons.qr_code,
-                                  "Presensi",
-                                  () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const QRDosen()),
-                                    );
-                                  },
-                                ),
+                                jadwalData != null &&
+                                        jadwalData!['kelas_berlangsung'] !=
+                                            null &&
+                                        jadwalData!['kelas_berlangsung']
+                                            .isNotEmpty &&
+                                        jadwalData?['kelas_berlangsung'][0]
+                                                ['status_presensi'] ==
+                                            'ongoing'
+                                    ? buildElevatedButton(
+                                        Icons.qr_code,
+                                        "Presensi",
+                                        () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const QRDosen()),
+                                          );
+                                        },
+                                      )
+                                    : buildElevatedButton(
+                                        Icons.qr_code,
+                                        "Presensi",
+                                        () {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                                content: Text(
+                                                    'Tidak ada Kelas yang dimulai')),
+                                          );
+                                        },
+                                      ),
                                 buildElevatedButton(
                                   Icons.work_outline,
                                   "Kelas",

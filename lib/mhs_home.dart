@@ -23,6 +23,7 @@ class _MhsHomeState extends State<MhsHome> {
   String? role;
   Map<String, dynamic>? jadwalData;
   bool isLoading = true;
+  String? urlApi;
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _MhsHomeState extends State<MhsHome> {
       password = prefs.getString('password');
       noHp = prefs.getString('noHp');
       role = prefs.getString('role');
+      urlApi = prefs.getString('urlApi');
     });
   }
 
@@ -58,7 +60,7 @@ class _MhsHomeState extends State<MhsHome> {
   Future<void> fetchJadwal(int idMahasiswa) async {
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.56.1/potensi_api/fetch_jadwal_mahasiswa.php'),
+        Uri.parse('$urlApi/potensi_api/fetch_jadwal_mahasiswa.php'),
         body: {'id_mahasiswa': idMahasiswa.toString()},
       );
 
