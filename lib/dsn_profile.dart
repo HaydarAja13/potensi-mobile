@@ -330,7 +330,9 @@ class _DsnProfileState extends State<DsnProfile> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.clear();
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(

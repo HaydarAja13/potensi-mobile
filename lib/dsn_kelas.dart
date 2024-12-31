@@ -45,22 +45,20 @@ class _DsnKelasState extends State<DsnKelas> {
   }
 
   Future<void> fetchJadwal(int idUser) async {
+    if (!mounted) return;
     try {
       final response = await http.post(
         Uri.parse('$urlApi/potensi_api/fetch_jadwal.php'),
         body: {'id_user': idUser.toString()},
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('Response API: $data');
-        if (data['status'] == 'success') {
+        if (data['status'] == 'success' && mounted) {
           setState(() {
             jadwalData = data['data'];
-            isLoading = false;
           });
-        } else {
-          print('Error: ${data['message']}');
+        } else if (data['status'] != 'success') {
+          print('Error from API: ${data['message']}');
         }
       } else {
         print('Failed to fetch data. Status code: ${response.statusCode}');
@@ -68,9 +66,11 @@ class _DsnKelasState extends State<DsnKelas> {
     } catch (e) {
       print('Error during API call: $e');
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -136,7 +136,7 @@ class _DsnKelasState extends State<DsnKelas> {
           left: 0,
           right: 0,
           child: Container(
-            height: screenHeight * 0.7,
+            height: screenHeight * 0.68,
             decoration: const BoxDecoration(
               color: Color(0xfff4f4f4),
               borderRadius: BorderRadius.only(

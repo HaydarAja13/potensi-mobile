@@ -63,8 +63,7 @@ class _DsnHomeState extends State<DsnHome> {
   Future<void> fetchJadwal(int idUser) async {
     try {
       final response = await http.post(
-        Uri.parse(
-            '$urlApi/potensi_api/fetch_jadwal.php'),
+        Uri.parse('$urlApi/potensi_api/fetch_jadwal.php'),
         body: {'id_user': idUser.toString()},
       );
 

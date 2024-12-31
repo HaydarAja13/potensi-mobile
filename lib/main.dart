@@ -131,62 +131,143 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  String urlApi = 'http://192.168.56.1';
+  String urlApi = 'https://well-pelican-real.ngrok-free.app';
   bool changeTable = false; // State untuk switch
-  // State untuk switch
-  Future<void> login() async {
-    final prefs = await SharedPreferences.getInstance();
-    final url = Uri.parse(
-        '$urlApi/potensi_api/login.php'); // Ganti dengan URL API Anda
+  bool isLoading = false;
 
-    final response = await http.post(
-      url,
-      body: jsonEncode({
-        'email': emailController.text,
-        'password': passwordController.text,
-        'changeTable': changeTable,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+  @override
+  void initState() {
+    super.initState();
+    checkLoginStatus();
+  }
 
-    final data = jsonDecode(response.body);
+  Future<void> checkLoginStatus() async {
+    if (!mounted) return;
 
-    if (data['success']) {
-      // Login berhasil, navigasi ke halaman berdasarkan switch
-      if (changeTable) {
-        await prefs.setInt('id_dosen', data['user']['id_dosen']);
-        await prefs.setString('nip', data['user']['nip']);
-        await prefs.setString('nama_dosen', data['user']['nama_dosen']);
-        await prefs.setString('email', data['user']['email']);
-        await prefs.setString('password', data['user']['password']);
-        await prefs.setString('no_hp', data['user']['no_hp']);
-        await prefs.setString('role', data['role']);
-        await prefs.setString('urlApi', urlApi);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DsnMain()),
-        );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Periksa apakah ada data login yang tersimpan
+      final lastLoginTimeStr = prefs.getString('lastLoginTime');
+      if (lastLoginTimeStr == null) return;
+
+      final lastLoginTime = DateTime.parse(lastLoginTimeStr);
+      final currentTime = DateTime.now();
+      final difference = currentTime.difference(lastLoginTime).inDays;
+
+      // Simpan urlApi
+      await prefs.setString('urlApi', urlApi);
+
+      if (difference <= 7 && mounted) {
+        final String? role = prefs.getString('role');
+        // Pastikan semua data yang diperlukan tersedia
+        if (role == 'dosen' && prefs.getInt('id_dosen') != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DsnMain()),
+          );
+        } else if (role == 'mahasiswa' &&
+            prefs.getInt('id_mahasiswa') != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MhsMain()),
+          );
+        }
       } else {
-        await prefs.setInt('id_mahasiswa', data['user']['id_mahasiswa']);
-        await prefs.setInt('nim', data['user']['nim']);
-        await prefs.setString('nama', data['user']['nama']);
-        await prefs.setString('email', data['user']['email']);
-        await prefs.setString('password', data['user']['password']);
-        await prefs.setString('no_hp', data['user']['no_hp']);
-        await prefs.setString('role', data['role']);
+        // Jika sesi kadaluarsa, bersihkan SharedPreferences
+        await prefs.clear();
+      }
+    } catch (e) {
+      print('Error checking login status: $e');
+      // Handle error appropriately
+    }
+  }
+
+  Future<void> login() async {
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final url = Uri.parse('$urlApi/potensi_api/login.php');
+
+      final response = await http.post(
+        url,
+        body: jsonEncode({
+          'email': emailController.text,
+          'password': passwordController.text,
+          'changeTable': changeTable,
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (!mounted) return;
+
+      final data = jsonDecode(response.body);
+
+      if (data['success']) {
+        // Simpan waktu login
+        await prefs.setString(
+            'lastLoginTime', DateTime.now().toIso8601String());
+        // Simpan urlApi
         await prefs.setString('urlApi', urlApi);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MhsMain()),
+
+        if (changeTable) {
+          // Simpan data dosen
+          await prefs.setInt('id_dosen', data['user']['id_dosen']);
+          await prefs.setString('nip', data['user']['nip']);
+          await prefs.setString('nama_dosen', data['user']['nama_dosen']);
+          await prefs.setString('email', data['user']['email']);
+          await prefs.setString('password', data['user']['password']);
+          await prefs.setString('no_hp', data['user']['no_hp']);
+          await prefs.setString('role', data['role']);
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const DsnMain()),
+            );
+          }
+        } else {
+          // Simpan data mahasiswa
+          await prefs.setInt('id_mahasiswa', data['user']['id_mahasiswa']);
+          await prefs.setInt('nim', data['user']['nim']);
+          await prefs.setString('nama', data['user']['nama']);
+          await prefs.setString('email', data['user']['email']);
+          await prefs.setString('password', data['user']['password']);
+          await prefs.setString('no_hp', data['user']['no_hp']);
+          await prefs.setString('role', data['role']);
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MhsMain()),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'])),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
         );
       }
-    } else {
-      // Login gagal
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['message'])),
-      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-    print(response.body);
   }
 
   @override

@@ -331,9 +331,9 @@ class _MhsProfileState extends State<MhsProfile> {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () async {
-                              SharedPreferences prefs =
+                              final prefs =
                                   await SharedPreferences.getInstance();
-                              prefs.clear();
+                              await prefs.clear();
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(

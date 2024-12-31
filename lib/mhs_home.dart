@@ -398,8 +398,11 @@ class _MhsHomeState extends State<MhsHome> {
                                   ),
                                 ),
                         ),
+                        SizedBox(
+                          height: screenHeight * 0.015,
+                        ),
                         Text(
-                          'Next Class',
+                          'Kelas Selanjutnya',
                           style: TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 16.0 * textScale,
@@ -696,100 +699,6 @@ class _MhsHomeState extends State<MhsHome> {
                                 size: 25,
                                 color: Colors.grey,
                               ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          decoration: const BoxDecoration(
-                              color: Colors.white,
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(15))),
-                          margin: const EdgeInsets.only(top: 16.0),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Row(
-                                  children: [
-                                    const CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor:
-                                          Color.fromARGB(150, 142, 202, 230),
-                                      child: Icon(
-                                        Icons.check_circle_outline_sharp,
-                                        size: 35,
-                                        color: Color(0xff219EBC),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Masuk',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 14 * textScale,
-                                                color: const Color(0xff929292),
-                                                fontWeight: FontWeight.w600),
-                                          ),
-                                          Text(
-                                            '03',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 20 * textScale,
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w700),
-                                          )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    const CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor:
-                                          Color.fromARGB(150, 142, 202, 230),
-                                      child: Icon(
-                                        Icons.warning_rounded,
-                                        size: 35,
-                                        color: Color(0xff219EBC),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(left: 8),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Tidak masuk',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 14 * textScale,
-                                                color: const Color(0xff929292),
-                                                fontWeight: FontWeight.w600),
-                                          ),
-                                          Text(
-                                            '00',
-                                            style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 20 * textScale,
-                                                color: Colors.black,
-                                                fontWeight: FontWeight.w700),
-                                          )
-                                        ],
-                                      ),
-                                    )
-                                  ],
-                                ),
-                              ],
                             ),
                           ),
                         ),

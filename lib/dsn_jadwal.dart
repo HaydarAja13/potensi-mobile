@@ -9,424 +9,421 @@ class DsnJadwal extends StatefulWidget {
   const DsnJadwal({super.key});
 
   @override
-  _DsnJadwalState createState() => _DsnJadwalState();
+  State<DsnJadwal> createState() => _DsnJadwalState();
 }
 
 class _DsnJadwalState extends State<DsnJadwal> {
-  late Future<Map<String, dynamic>> futureJadwal;
-  String selectedDay = 'Senin';
-  int? idDosen;
+  int selectedDayIndex = 0;
+  final List<String> days = ["Sen", "Sel", "Rab", "Kam", "Jum"];
+  Map<String, dynamic> schedule = {};
   String? urlApi;
+  int? idDosen;
+  bool isLoading = true;
+  bool isInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    futureJadwal = fetchJadwal();
-  }
-
-  Future<Map<String, dynamic>> fetchJadwal() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      idDosen = prefs.getInt('id_dosen');
-      urlApi = prefs.getString('urlApi');
-    });
-    final response = await http.get(
-      Uri.parse('$urlApi/potensi_api/jadwal_dosen.php?id_dosen=$idDosen'),
-    );
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception('Failed to load schedule');
-    }
+    initializeData();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: futureJadwal,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData && snapshot.data!['jadwal'] != null) {
-            final data = snapshot.data!;
-            final namaDosen = data['nama_dosen'];
-            final jadwal = data['jadwal'];
+  void dispose() {
+    isInitialized = false; // Prevent any future setState calls
+    super.dispose();
+  }
 
-            String currentDate =
-                DateFormat('EEEE, d MMMM y', 'id_ID').format(DateTime.now());
+  Future<void> initializeData() async {
+    if (!mounted) return;
 
-            return Padding(
-              padding: const EdgeInsets.all(0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(namaDosen, context),
-                  const SizedBox(height: 40),
-                  _buildCurrentDate(currentDate),
-                  const SizedBox(height: 10),
-                  _buildDayButtons(jadwal),
-                  const SizedBox(height: 10),
-                  _buildTimelineHeader(),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: ScheduleDay(
-                        day: selectedDay,
-                        scheduleData: jadwal[selectedDay] ?? [],
-                      ),
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedUrlApi = prefs.getString('urlApi');
+      final storedIdDosen = prefs.getInt('id_dosen');
+
+      if (!mounted) return;
+
+      if (storedUrlApi != null && storedIdDosen != null) {
+        setState(() {
+          urlApi = storedUrlApi;
+          idDosen = storedIdDosen;
+          isInitialized = true;
+        });
+        await fetchSchedule();
+      } else {
+        setState(() {
+          isLoading = false;
+          isInitialized = true;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        isInitialized = true;
+      });
+      debugPrint('Error initializing data: $e');
+    }
+  }
+
+  Future<void> fetchSchedule() async {
+    if (!mounted || !isInitialized || urlApi == null || idDosen == null) return;
+
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final response = await http.get(
+        Uri.parse('$urlApi/potensi_api/jadwal_dosen.php?id_dosen=$idDosen'),
+      );
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          if (data['jadwal'] != null) {
+            // Convert the keys to match your days array
+            final Map<String, dynamic> formattedSchedule = {
+              'Sen': data['jadwal']['Senin'] ?? [],
+              'Sel': data['jadwal']['Selasa'] ?? [],
+              'Rab': data['jadwal']['Rabu'] ?? [],
+              'Kam': data['jadwal']['Kamis'] ?? [],
+              'Jum': data['jadwal']['Jumat'] ?? []
+            };
+            schedule = formattedSchedule;
+          }
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        debugPrint('Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
+      debugPrint('Error fetching schedule: $e');
+    }
+  }
+
+  List<DateTime> getDatesInWeek() {
+    DateTime now = DateTime.now();
+    int currentWeekDay = now.weekday;
+    DateTime startOfWeek = now.subtract(Duration(days: currentWeekDay - 1));
+    return List.generate(7, (index) => startOfWeek.add(Duration(days: index)));
+  }
+
+  String truncateText(String text, int maxLength) {
+    if (text.length <= maxLength) return text;
+    return '${text.substring(0, maxLength)}...';
+  }
+
+  Widget buildScheduleList() {
+    if (!isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (urlApi == null || idDosen == null) {
+      return const Center(child: Text('Configuration missing'));
+    }
+
+    String selectedDay = days[selectedDayIndex];
+    List<dynamic> selectedDaySchedule = schedule[selectedDay] ?? [];
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (selectedDaySchedule.isEmpty) {
+      return Center(
+          child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(
+            'images/empty_schedule.png',
+            height: MediaQuery.of(context).size.height * 0.35,
+          ),
+          const Text(
+            'Tidak ada kelas',
+            style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                color: Color(0xff023047)),
+          )
+        ],
+      ));
+    }
+
+    return ListView.builder(
+      itemCount: selectedDaySchedule.length,
+      itemBuilder: (context, index) =>
+          buildScheduleCard(selectedDaySchedule[index]),
+    );
+  }
+
+  Widget buildScheduleCard(dynamic item) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
+    double textScale = MediaQuery.of(context).textScaleFactor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        color: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: Color.fromARGB(64, 85, 198, 255),
+                  borderRadius: BorderRadius.all(Radius.circular(5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    item['nama_kelas'] ?? '',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      color: const Color(0xff023047),
+                      fontSize: textScale * 15,
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.005),
+              Text(
+                truncateText(item['nama_mata_kuliah'] ?? '', 20),
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  color: Colors.black,
+                  fontSize: textScale * 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: screenHeight * 0.025),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ruang',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: const Color.fromARGB(255, 74, 74, 74),
+                          fontSize: textScale * 12,
+                        ),
+                      ),
+                      Text(
+                        truncateText(item['nama_ruang'] ?? '', 10),
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          color: Colors.black,
+                          fontSize: textScale * 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      _buildTimeColumn(
+                          'Mulai', item['jam_awal'] ?? '', textScale),
+                      SizedBox(width: screenWidth * 0.06),
+                      _buildTimeColumn(
+                          'Selesai', item['jam_akhir'] ?? '', textScale),
+                    ],
                   ),
                 ],
               ),
-            );
-          } else {
-            return const Center(child: Text('No Data Available'));
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildHeader(String namaDosen, BuildContext context) {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      height: 270,
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('images/bgjadwal.jpg'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          const Text(
-            'Jadwal',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Poppins',
-              color: Colors.white,
-            ),
+            ],
           ),
-          const Text(
-            'Mata Kuliah',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Poppins',
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 234, 248, 255).withOpacity(0.5),
-              borderRadius: BorderRadius.circular(90),
-            ),
-            padding: const EdgeInsets.all(12.0),
-            child: Text(
-              namaDosen,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCurrentDate(String currentDate) {
-    return Container(
-      padding: const EdgeInsets.only(left: 20, bottom: 10),
-      child: Text(
-        currentDate,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Poppins',
         ),
       ),
     );
   }
 
-  Widget _buildTimelineHeader() {
-    return Container(
-      padding: const EdgeInsets.only(left: 20, top: 20),
-      child: const Text(
-        'Timeline',
-        style: TextStyle(
-          fontFamily: 'Poppins',
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDayButtons(Map<String, dynamic> jadwal) {
-    DateTime now = DateTime.now();
-    DateTime monday = now.subtract(Duration(days: now.weekday - 1));
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+  Widget _buildTimeColumn(String label, String time, double textScale) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _dayButton(DateFormat('d', 'id_ID').format(monday), "Senin",
-            selectedDay == "Senin", jadwal["Senin"] ?? []),
-        _dayButton(
-            DateFormat('d', 'id_ID')
-                .format(monday.add(const Duration(days: 1))),
-            "Selasa",
-            selectedDay == "Selasa",
-            jadwal["Selasa"] ?? []),
-        _dayButton(
-            DateFormat('d', 'id_ID')
-                .format(monday.add(const Duration(days: 2))),
-            "Rabu",
-            selectedDay == "Rabu",
-            jadwal["Rabu"] ?? []),
-        _dayButton(
-            DateFormat('d', 'id_ID')
-                .format(monday.add(const Duration(days: 3))),
-            "Kamis",
-            selectedDay == "Kamis",
-            jadwal["Kamis"] ?? []),
-        _dayButton(
-            DateFormat('d', 'id_ID')
-                .format(monday.add(const Duration(days: 4))),
-            "Jumat",
-            selectedDay == "Jumat",
-            jadwal["Jumat"] ?? []),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            color: const Color.fromARGB(255, 74, 74, 74),
+            fontSize: textScale * 12,
+          ),
+        ),
+        Text(
+          time,
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            color: Colors.black,
+            fontSize: textScale * 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _dayButton(
-      String date, String dayName, bool isSelected, List<dynamic> schedule) {
-    int courseCount = schedule.length;
+  @override
+  Widget build(BuildContext context) {
+    List<DateTime> datesInWeek = getDatesInWeek();
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    double textScale = MediaQuery.of(context).textScaleFactor;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedDay = dayName; // Update the selected day
-        });
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color.fromARGB(255, 9, 51, 85)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border:
-                      Border.all(color: const Color.fromARGB(255, 0, 51, 93)),
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: double.infinity,
+              height: screenHeight * 0.5,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('images/bgkelas.jpg'),
+                  colorFilter: ColorFilter.mode(
+                    Color.fromARGB(65, 0, 0, 0),
+                    BlendMode.darken,
+                  ),
+                  fit: BoxFit.cover,
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      date,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    Text(
-                      dayName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isSelected ? Colors.white : Colors.black,
-                        fontFamily: 'Poppins',
+                    SizedBox(height: screenHeight * 0.06),
+                    SizedBox(
+                      width: screenWidth * 0.6,
+                      child: Text(
+                        'Jadwal Mata Kuliah',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 30.0 * textScale,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              if (courseCount > 0)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$courseCount',
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ScheduleDay extends StatelessWidget {
-  final String day;
-  final List<dynamic> scheduleData;
-
-  const ScheduleDay({super.key, required this.day, required this.scheduleData});
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Color> cardColors = [
-      Colors.purple.shade100,
-      Colors.blue.shade100,
-      Colors.green.shade100,
-      Colors.orange.shade100,
-      Colors.red.shade100,
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        children: scheduleData.asMap().entries.map((entry) {
-          final index = entry.key;
-          final course = entry.value;
-
-          return Card(
-            elevation: 4,
-            color: cardColors[
-                index % cardColors.length], // Pilih warna berdasarkan indeks
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ],
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: screenHeight * 0.68,
+            decoration: const BoxDecoration(
+              color: Color(0xfff4f4f4),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(30),
+                topRight: Radius.circular(30),
+              ),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(
+                top: 20,
+                left: 18,
+                right: 18,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    course['nama_mata_kuliah'],
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Row(
-                    children: [
-                      const Icon(Icons.meeting_room, size: 18),
-                      const SizedBox(width: 8),
-                      Text(course['nama_ruang']),
-                    ],
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(days.length, (index) {
+                      String formattedDate =
+                          DateFormat('dd', 'id_ID').format(datesInWeek[index]);
+                      bool isSelected = selectedDayIndex == index;
+                      return SizedBox(
+                        height: screenHeight * 0.1,
+                        width: screenWidth * 0.15,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              selectedDayIndex = index;
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? Colors.transparent
+                                    : const Color(0xff023047),
+                                width: 2.0,
+                              ),
+                            ),
+                            backgroundColor: isSelected
+                                ? const Color(0xff023047)
+                                : Colors.white,
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                formattedDate,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xff023047),
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  fontSize: textScale * 20,
+                                ),
+                              ),
+                              Text(
+                                days[index],
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xff023047),
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  fontSize: textScale * 15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 18),
-                      const SizedBox(width: 8),
-                      Text('${course['jam_awal']} - ${course['jam_akhir']}'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.school, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                          '${course['nama_program_studi']} ${course['tahun_angkatan']} ${course['nama_kelas']}'),
-                    ],
-                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  Expanded(child: buildScheduleList()),
                 ],
               ),
             ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class ScheduleTile extends StatelessWidget {
-  final String courseName;
-  final String room;
-  final String time;
-  final String className;
-
-  const ScheduleTile({
-    super.key,
-    required this.courseName,
-    required this.room,
-    required this.time,
-    required this.className,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      title: Container(
-        alignment: Alignment.center, // Untuk penempatan di tengah
-        child: Text(
-          courseName,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            fontFamily: 'Poppins',
           ),
         ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.meeting_room,
-                  size: 18, color: Color.fromARGB(255, 0, 0, 0)),
-              const SizedBox(width: 12),
-              Text(room,
-                  style: const TextStyle(
-                      color: Colors.black87, fontFamily: 'Poppins')),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.access_time,
-                  size: 18, color: Color.fromARGB(255, 0, 0, 0)),
-              const SizedBox(width: 12),
-              Text(time,
-                  style: const TextStyle(
-                      color: Colors.black87, fontFamily: 'Poppins')),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.class_,
-                  size: 18, color: Color.fromARGB(255, 0, 0, 0)),
-              const SizedBox(width: 12),
-              Text(className,
-                  style: const TextStyle(
-                      color: Colors.black87, fontFamily: 'Poppins')),
-            ],
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

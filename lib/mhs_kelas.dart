@@ -45,22 +45,20 @@ class _MhsKelasState extends State<MhsKelas> {
   }
 
   Future<void> fetchJadwal(int idUser) async {
+    if (!mounted) return;
     try {
       final response = await http.post(
         Uri.parse('$urlApi/potensi_api/fetch_jadwal_mahasiswa.php'),
         body: {'id_mahasiswa': idUser.toString()},
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print('Response API: $data');
-        if (data['status'] == 'success') {
+        if (data['status'] == 'success' && mounted) {
           setState(() {
             jadwalData = data['data'];
-            isLoading = false;
           });
-        } else {
-          print('Error: ${data['message']}');
+        } else if (data['status'] != 'success') {
+          print('Error from API: ${data['message']}');
         }
       } else {
         print('Failed to fetch data. Status code: ${response.statusCode}');
@@ -68,9 +66,11 @@ class _MhsKelasState extends State<MhsKelas> {
     } catch (e) {
       print('Error during API call: $e');
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -136,7 +136,7 @@ class _MhsKelasState extends State<MhsKelas> {
           left: 0,
           right: 0,
           child: Container(
-            height: screenHeight * 0.7,
+            height: screenHeight * 0.68,
             decoration: const BoxDecoration(
               color: Color(0xfff4f4f4),
               borderRadius: BorderRadius.only(
@@ -186,10 +186,11 @@ class _MhsKelasState extends State<MhsKelas> {
                                   bottom: 22,
                                 ),
                                 child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       mainAxisAlignment:
-                                          MainAxisAlignment.spaceAround,
+                                          MainAxisAlignment.spaceBetween,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
@@ -200,32 +201,35 @@ class _MhsKelasState extends State<MhsKelas> {
                                                 .toUpperCase(),
                                             style: TextStyle(
                                               fontFamily: 'Poppins',
-                                              fontSize: 13.0 * textScale,
+                                              fontSize: 16.0 * textScale,
                                               color: const Color(0xff023047),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                        Container(
-                                          decoration: const BoxDecoration(
-                                              color: Color(0xffe2e2e2),
-                                              borderRadius: BorderRadius.all(
-                                                  Radius.circular(15))),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 6),
-                                            child: Text(
-                                              '${jadwalData!['kelas_berlangsung'][0]['ruang']}',
-                                              style: TextStyle(
-                                                fontFamily: 'Poppins',
-                                                fontSize: 11.0 * textScale,
-                                                color: const Color(0xff888888),
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                              fontWeight: FontWeight.w800,
                                             ),
                                           ),
                                         ),
                                       ],
+                                    ),
+                                    SizedBox(
+                                      height: screenHeight * 0.005,
+                                    ),
+                                    Container(
+                                      decoration: const BoxDecoration(
+                                          color: Color(0xffe2e2e2),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(15))),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 6),
+                                        child: Text(
+                                          '${jadwalData!['kelas_berlangsung'][0]['ruang']}',
+                                          style: TextStyle(
+                                            fontFamily: 'Poppins',
+                                            fontSize: 11.0 * textScale,
+                                            color: const Color(0xff888888),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                     SizedBox(
                                       height: screenHeight * 0.01,
@@ -313,7 +317,27 @@ class _MhsKelasState extends State<MhsKelas> {
                             )
                           ],
                         )
-                      : const Text('tidak ada'),
+                      : SizedBox(
+                          width: double.infinity,
+                          child: Card(
+                            margin: const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15.0),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Tidak ada Kelas',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                   SizedBox(
                     height: screenHeight * 0.02,
                   ),
@@ -346,6 +370,7 @@ class _MhsKelasState extends State<MhsKelas> {
                               bottom: 22,
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   mainAxisAlignment:
@@ -355,35 +380,39 @@ class _MhsKelasState extends State<MhsKelas> {
                                     SizedBox(
                                       width: screenWidth * 0.6,
                                       child: Text(
-                                        '${jadwalData!['kelas_akan_datang'][0]['nama_mata_kuliah']}',
+                                        '${jadwalData!['kelas_akan_datang'][0]['nama_mata_kuliah']}'
+                                            .toUpperCase(),
                                         style: TextStyle(
                                           fontFamily: 'Poppins',
-                                          fontSize: 14.0 * textScale,
+                                          fontSize: 16.0 * textScale,
                                           color: const Color(0xff757575),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      decoration: const BoxDecoration(
-                                          color: Color(0xffe2e2e2),
-                                          borderRadius: BorderRadius.all(
-                                              Radius.circular(15))),
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 6),
-                                        child: Text(
-                                          '${jadwalData!['kelas_akan_datang'][0]['ruang']}',
-                                          style: TextStyle(
-                                            fontFamily: 'Poppins',
-                                            fontSize: 13.0 * textScale,
-                                            color: const Color(0xff888888),
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                          fontWeight: FontWeight.w800,
                                         ),
                                       ),
                                     ),
                                   ],
+                                ),
+                                SizedBox(
+                                  height: screenHeight * 0.005,
+                                ),
+                                Container(
+                                  decoration: const BoxDecoration(
+                                      color: Color(0xffe2e2e2),
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(15))),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    child: Text(
+                                      '${jadwalData!['kelas_akan_datang'][0]['ruang']}',
+                                      style: TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 11.0 * textScale,
+                                        color: const Color(0xff888888),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                                 SizedBox(
                                   height: screenHeight * 0.01,
